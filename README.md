@@ -1,46 +1,46 @@
 # DevOps / SRE Trial Task — Submission
 
-## Visão geral
+## Overview
 
-Este repositório evolui a infraestrutura base fornecida no desafio da Feegow, com foco em **observabilidade**, **confiabilidade** e **qualidade operacional**.  
-A abordagem adotada foi **incremental e orientada a sinais**, validando cada camada (infra → métricas → logs → alertas) antes de avançar para carga, SLOs e automações.
+This repository evolves the base infrastructure provided in Feegow’s challenge, focusing on **observability**, **reliability**, and **operational quality**.  
+The approach taken was **incremental and signal-driven**, validating each layer (infra → metrics → logs → alerts) before moving on to load, SLOs, and automation.
 
-### Principais entregas
+### Key deliverables
 
-- Observabilidade funcional (**Prometheus, Grafana, Loki**)
-- Dashboards de aplicação completos (RPS, erros, latência por rota)
-- Redução de ruído em alertas
-- Alerta baseado em logs (Loki) com correlação por rota
-- Alertas provisionados via **IaC** (sem dependência de UI)
-- Documentação de decisões e trade-offs operacionais
+- Working observability (**Prometheus, Grafana, Loki**)
+- Complete application dashboards (RPS, errors, latency per route)
+- Alert noise reduction
+- Log-based alerting (Loki) with route correlation
+- Alerts provisioned via **IaC** (no UI dependency)
+- Documentation of operational decisions and trade-offs
 
 ---
 
-## Setup e validação inicial
+## Setup and initial validation
 
-### 1. Infraestrutura base
+### 1. Base infrastructure
 
 ```bash
 make up
 ```
 
-**Validações realizadas:**
+**Validations performed:**
 
-- Cluster `kind` criado e reutilizável  
-- Ingress funcional em `http://dev.local`  
-- Stack de observabilidade ativa (Prometheus, Grafana, Loki, Tempo)  
-- Datasources e dashboards provisionados automaticamente no Grafana  
-- Alertmanager configurado via arquivo  
+- Reusable `kind` cluster created  
+- Working Ingress at `http://dev.local`  
+- Observability stack running (Prometheus, Grafana, Loki, Tempo)  
+- Datasources and dashboards automatically provisioned in Grafana  
+- Alertmanager configured via file  
 
 ---
 
-### 2. Deploy das aplicações
+### 2. Application deploy
 
 ```bash
 make deploy
 ```
 
-**Aplicações disponíveis:**
+**Available applications:**
 
 - **Frontend:** `http://dev.local/`  
 - **API v1 (Python):** `/v1/appoints/available-schedule`  
@@ -48,62 +48,62 @@ make deploy
 
 ---
 
-## Ajustes técnicos necessários
+## Required technical adjustments
 
 ### Metrics API (HPA)
 
-Durante a validação inicial, o comando `kubectl top pods` falhava devido à indisponibilidade da **Metrics API**.
+During the initial validation, `kubectl top pods` failed due to the **Metrics API** being unavailable.
 
-**Ação tomada:**
+**Action taken:**
 
-- Correção da instalação do `metrics-server` no cluster
+- Fixed the `metrics-server` installation in the cluster
 
-**Resultado:**
+**Result:**
 
-- Métricas de CPU e memória disponíveis  
-- HPAs funcionando corretamente  
-- Base sólida para autoscaling e alertas  
-
----
-
-### Falha do Loki ao inicializar (Ruler)
-
-O **Loki Ruler** falhava ao inicializar porque o chart monta `/etc/loki` via `Secret` como **read-only**, impedindo a criação do diretório de regras.
-
-**Ação tomada:**
-
-- Ajuste do `ruler.storage` para utilizar `/tmp/loki/rules`  
-- Montagem das regras via `ConfigMap` nesse path  
-- Separação entre `config.file` e `rule_path`  
-
-**Resultado:**
-
-- Loki inicializa corretamente  
-- Ruler ativo e avaliando regras continuamente  
-- Alertas de logs totalmente provisionados via IaC  
+- CPU and memory metrics available  
+- HPAs working correctly  
+- Solid baseline for autoscaling and alerting  
 
 ---
 
-## Observabilidade — Métricas (Prometheus + Grafana)
+### Loki failing to start (Ruler)
 
-### Dashboard de aplicação
+The **Loki Ruler** failed to start because the chart mounts `/etc/loki` via `Secret` as **read-only**, preventing creation of the rules directory.
 
-**Arquivo atualizado:**
+**Action taken:**
+
+- Updated `ruler.storage` to use `/tmp/loki/rules`  
+- Mounted rules via `ConfigMap` at that path  
+- Separated `config.file` and `rule_path`  
+
+**Result:**
+
+- Loki starts correctly  
+- Ruler is active and continuously evaluating rules  
+- Log alerts fully provisioned via IaC  
+
+---
+
+## Observability — Metrics (Prometheus + Grafana)
+
+### Application dashboard
+
+**Updated file:**
 
 - `dashboards/grafana/app-latency.json`
 
-**Painéis implementados:**
+**Panels implemented:**
 
 - RPS (req/s)  
-- Error rate 5xx (%)  
-- Latency p95 por rota  
-- Percentual de 5xx por rota  
+- 5xx error rate (%)  
+- p95 latency per route  
+- 5xx percentage per route  
 
 ---
 
-## Observabilidade — Logs (Loki)
+## Observability — Logs (Loki)
 
-### Validação de ingestão
+### Ingestion validation
 
 ```logql
 {namespace="apps"}
@@ -111,40 +111,42 @@ O **Loki Ruler** falhava ao inicializar porque o chart monta `/etc/loki` via `Se
 
 ---
 
-### Alerta baseado em logs — `LogsErrorBurst`
+### Log-based alert — `LogsErrorBurst`
 
 ```logql
 sum by (app, route) (
   count_over_time(
-    {namespace="apps"} |= "\" 5"
-    | regexp "\"(GET|POST|PUT|DELETE|PATCH) (?P<route>/[^ ]+) HTTP/1\\.1\" (?P<status>5\\d\\d)"
+    {namespace="apps"} |= "" 5"
+    | regexp ""(GET|POST|PUT|DELETE|PATCH) (?P<route>/[^ ]+) HTTP/1\.1" (?P<status>5\d\d)"
   [5m])
 ) > 5
 ```
 
-## CI/CD — Testes unitários
+## CI/CD — Unit tests
 
-O workflow executa testes unitários de **Python (pytest)** e **Go (go test)** em jobs separados, falhando o pipeline via exit code em caso de erro.  
-Isso reduz risco de regressões e acelera feedback, pois valida lógica antes de build/deploy.  
-Também é possível reproduzir localmente com `act`, evitando ciclos de push apenas para validar CI.
+The workflow runs unit tests for **Python (pytest)** and **Go (go test)** in separate jobs, failing the pipeline via exit code if there is an error.  
+This reduces regression risk and speeds up feedback by validating logic before build/deploy.  
+It can also be reproduced locally with `act`, avoiding push cycles just to validate CI.
 
-### Executar CI localmente (act)
+### Run CI locally (act)
 
 ```bash
 act -j unit-tests-python -P ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest
 act -j unit-tests-go -P ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest
 ```
 
-### CI local
+### Local CI
+
 ```bash
 cd apps/available-schedules-go && go test ./... -v
 cd apps/available-schedules-python && pytest -q
+```
 
 ---
 
-## Decisões & trade-offs
+## Decisions & trade-offs
 
-- Não usei k6 inicialmente para validar sinais primeiro  
-- Corrigi Metrics API antes dos HPAs  
-- Alerta baseado em status HTTP e não nível de log  
-- Severidade `ticket` para logs  
+- I didn’t use k6 at first to validate signals first  
+- I fixed the Metrics API before working on HPAs  
+- Alerting is based on HTTP status codes, not log level  
+- `ticket` severity for logs
