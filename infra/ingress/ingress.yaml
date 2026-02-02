@@ -1,0 +1,47 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: main
+  namespace: apps
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: dev.local
+      http:
+        paths:
+          - path: /v1
+            pathType: Prefix
+            backend:
+              service:
+                name: available-schedules-python
+                port: { number: 80 }
+          - path: /v2
+            pathType: Prefix
+            backend:
+              service:
+                name: available-schedules-go
+                port: { number: 80 }
+          - path: /metrics
+            pathType: Prefix
+            backend:
+              service:
+                name: available-schedules-python
+                port: { number: 80 }
+          - path: /healthz
+            pathType: Prefix
+            backend:
+              service:
+                name: available-schedules-python
+                port: { number: 80 }
+          - path: /assets
+            pathType: Prefix
+            backend:
+              service:
+                name: available-schedules-web
+                port: { number: 80 }
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: available-schedules-web
+                port: { number: 80 }

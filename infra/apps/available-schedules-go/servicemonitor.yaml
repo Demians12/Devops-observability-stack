@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: available-schedules-go
+  labels:
+    release: kps
+spec:
+  selector:
+    matchLabels:
+      app: available-schedules-go
+  namespaceSelector:
+    matchNames: [ "apps" ]
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+

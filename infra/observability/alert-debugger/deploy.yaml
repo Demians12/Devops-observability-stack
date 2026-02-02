@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alert-debugger
+  labels: { app: alert-debugger }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: alert-debugger }
+  template:
+    metadata:
+      labels: { app: alert-debugger }
+    spec:
+      containers:
+        - name: echo
+          image: hashicorp/http-echo:0.2.3
+          args: ["-listen=:8080", "-text=ok"]
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alert-debugger
+spec:
+  selector: { app: alert-debugger }
+  ports:
+    - port: 8080
+      targetPort: 8080

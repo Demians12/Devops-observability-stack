@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: available-schedules-python
+  labels: { app: available-schedules-python }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: available-schedules-python }
+  template:
+    metadata:
+      labels: { app: available-schedules-python }
+    spec:
+      containers:
+        - name: available-schedules-python
+          image: available-schedules-python:local
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: ERROR_RATE
+              value: "0.02"  
+            - name: EXTRA_LATENCY_MS
+              value: "50"
+            - name: SERVICE_NAME
+              value: "available-schedules-python"
+          ports:
+            - containerPort: 8000
+          resources:
+            requests: { cpu: "50m", memory: "64Mi" }
+            limits:   { cpu: "250m", memory: "256Mi" }

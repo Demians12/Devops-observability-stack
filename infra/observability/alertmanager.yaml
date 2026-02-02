@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-kps
+  namespace: observability
+  labels:
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/instance: kps
+    app.kubernetes.io/component: alertmanager
+    app.kubernetes.io/part-of: kube-prometheus-stack
+    alertmanager: kps-alertmanager
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: kube-prometheus-stack
+
+data:
+  alertmanager.yaml: |
+    route:
+      receiver: ticket-webhook
+      group_by: ['alertname', 'service', 'slo']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 2h
+      routes:
+        - matchers:
+            - severity="page"
+          receiver: page-webhook
+          repeat_interval: 30m
+        - matchers:
+            - severity="ticket"
+          receiver: ticket-webhook
+          repeat_interval: 2h
+
+    receivers:
+      - name: page-webhook
+        webhook_configs:
+          - url: http://alert-debugger.observability.svc.cluster.local:8080/page
+      - name: ticket-webhook
+        webhook_configs:
+          - url: http://alert-debugger.observability.svc.cluster.local:8080/ticket
